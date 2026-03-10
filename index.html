@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Max Headroom × Ron Mills — SkillUp AI Hackathon</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --cyan: #00fff7;
+    --magenta: #ff00ff;
+    --yellow: #ffe600;
+    --green: #39ff14;
+    --blue: #4488ff;
+    --bg: #0a0a0a;
+    --card-bg: rgba(20, 20, 40, 0.85);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    font-family: 'Share Tech Mono', 'Consolas', monospace;
+    overflow: hidden;
+    color: #ccc;
+  }
+
+  /* === SCANLINE OVERLAY (entire page) === */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0, 0, 0, 0.08) 2px, rgba(0, 0, 0, 0.08) 4px
+    );
+    z-index: 100;
+    pointer-events: none;
+    animation: scanroll 10s linear infinite;
+  }
+
+  @keyframes scanroll {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 200px; }
+  }
+
+  /* === NAV DOTS === */
+  .nav-dots {
+    position: fixed;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .nav-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid var(--cyan);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .nav-dot.active {
+    background: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan);
+  }
+
+  .nav-dot:hover::after {
+    content: attr(data-label);
+    position: absolute;
+    right: 22px;
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 0.65rem;
+    color: var(--cyan);
+    background: rgba(0,0,0,0.8);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* === KEYBOARD HINT === */
+  .key-hint {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    color: rgba(0, 255, 247, 0.3);
+    z-index: 50;
+    letter-spacing: 2px;
+  }
+
+  .key-hint kbd {
+    border: 1px solid rgba(0, 255, 247, 0.3);
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin: 0 2px;
+  }
+
+  /* === SLIDE CONTAINER === */
+  .slides {
+    width: 100%;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    pointer-events: none;
+    padding: 40px 80px;
+  }
+
+  .slide.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  /* === SLIDE 0: TITLE / MAX HELLO === */
+  .title-slide {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+
+  .max-face-mini {
+    position: relative;
+    width: 180px;
+    height: 200px;
+    margin: 0 auto;
+    animation: maxFloat 3s ease-in-out infinite;
+  }
+
+  @keyframes maxFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  .max-face-mini .head {
+    position: absolute;
+    width: 120px; height: 150px;
+    top: 8px; left: 30px;
+    background: linear-gradient(180deg, #e8d5b7, #c4a882);
+    border-radius: 60px 60px 50px 50px;
+    animation: glitchHead 5s infinite;
+  }
+
+  @keyframes glitchHead {
+    0%, 92%, 100% { transform: translate(0); filter: none; }
+    93% { transform: translate(-3px, 0); filter: hue-rotate(90deg); }
+    95% { transform: translate(3px, -1px); filter: hue-rotate(-90deg); }
+    97% { transform: translate(0); filter: none; }
+  }
+
+  .max-face-mini .hair {
+    position: absolute;
+    width: 140px; height: 65px;
+    top: -2px; left: 20px;
+    background: linear-gradient(180deg, #3a2f1f, transparent);
+    border-radius: 70px 70px 15px 15px;
+    z-index: 2;
+  }
+
+  .max-face-mini .eyes {
+    position: absolute;
+    top: 60px; left: 30px;
+    width: 120px;
+    display: flex; justify-content: space-between;
+    padding: 0 18px; z-index: 3;
+  }
+
+  .max-face-mini .eye {
+    width: 24px; height: 15px;
+    background: #fff;
+    border-radius: 50%;
+    position: relative;
+  }
+
+  .max-face-mini .eye::after {
+    content: '';
+    position: absolute;
+    width: 10px; height: 10px;
+    background: radial-gradient(circle, #000 40%, #2d5a8c);
+    border-radius: 50%;
+    top: 3px; left: 8px;
+    animation: eyeLook 5s ease-in-out infinite;
+  }
+
+  @keyframes eyeLook {
+    0%, 40%, 100% { transform: translateX(0); }
+    45%, 55% { transform: translateX(3px); }
+    60%, 90% { transform: translateX(-2px); }
+  }
+
+  .max-face-mini .mouth {
+    position: absolute;
+    top: 108px; left: 68px;
+    width: 45px; height: 15px; z-index: 3;
+  }
+
+  .max-face-mini .mouth::before {
+    content: '';
+    position: absolute;
+    width: 40px; height: 18px;
+    border-bottom: 3px solid #8b4040;
+    border-radius: 0 0 20px 20px;
+  }
+
+  .max-face-mini .suit {
+    position: absolute;
+    bottom: 0; left: 15px;
+    width: 150px; height: 55px;
+    background: linear-gradient(180deg, #1a1a3a, #0f0f2a);
+    border-radius: 75px 75px 0 0;
+    z-index: 1;
+  }
+
+  .max-face-mini .suit::before {
+    content: '';
+    position: absolute;
+    top: 10px; left: 50%;
+    transform: translateX(-50%);
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 22px solid #fff;
+    opacity: 0.9;
+  }
+
+  .max-face-mini .suit::after {
+    content: '';
+    position: absolute;
+    top: 28px; left: 50%;
+    transform: translateX(-50%);
+    width: 8px; height: 24px;
+    background: linear-gradient(180deg, #cc2244, #991133);
+    clip-path: polygon(30% 0%, 70% 0%, 100% 100%, 50% 85%, 0% 100%);
+  }
+
+  .max-face-mini .eyebrow {
+    position: absolute;
+    width: 28px; height: 4px;
+    background: #3a2f1f;
+    border-radius: 2px;
+    top: 50px; z-index: 3;
+  }
+  .max-face-mini .eyebrow.left { left: 48px; }
+  .max-face-mini .eyebrow.right { left: 112px; }
+
+  .title-text h1 {
+    font-size: 2.4rem;
+    color: var(--cyan);
+    text-shadow: 0 0 20px rgba(0,255,247,0.5), 3px 0 var(--magenta), -3px 0 var(--green);
+    animation: textGlitch 5s infinite;
+    letter-spacing: 3px;
+  }
+
+  @keyframes textGlitch {
+    0%, 87%, 100% { text-shadow: 0 0 20px rgba(0,255,247,0.5); }
+    88% { text-shadow: 3px 0 var(--magenta), -3px 0 var(--green); }
+    90% { text-shadow: 0 0 20px rgba(0,255,247,0.5); }
+  }
+
+  .title-text .subtitle {
+    font-size: 1.3rem;
+    color: var(--green);
+    letter-spacing: 4px;
+    margin-top: 8px;
+    opacity: 0.8;
+  }
+
+  .title-text .event {
+    font-size: 0.75rem;
+    color: var(--magenta);
+    letter-spacing: 3px;
+    margin-top: 16px;
+    opacity: 0.6;
+  }
+
+  /* === CONVERSATION SLIDES === */
+  .convo-slide {
+    flex-direction: column;
+    gap: 24px;
+    max-width: 900px;
+    width: 100%;
+  }
+
+  .slide-header {
+    text-align: center;
+  }
+
+  .slide-header h2 {
+    font-size: 2rem;
+    color: var(--cyan);
+    text-shadow: 0 0 15px rgba(0,255,247,0.3);
+    letter-spacing: 2px;
+  }
+
+  .slide-header .tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: var(--bg);
+    background: var(--magenta);
+    padding: 2px 10px;
+    border-radius: 3px;
+    letter-spacing: 2px;
+    margin-top: 6px;
+  }
+
+  /* Chat bubbles */
+  .chat {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .chat-msg {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    animation: msgFadeIn 0.5s ease-out backwards;
+  }
+
+  .chat-msg:nth-child(1) { animation-delay: 0.2s; }
+  .chat-msg:nth-child(2) { animation-delay: 0.6s; }
+  .chat-msg:nth-child(3) { animation-delay: 1.0s; }
+
+  @keyframes msgFadeIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .chat-msg.max { flex-direction: row-reverse; }
+  .chat-msg.max .msg-bubble { background: rgba(0, 255, 247, 0.08); border-color: rgba(0,255,247,0.2); }
+
+  .msg-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    border: 2px solid;
+  }
+
+  .chat-msg.ron .msg-avatar { border-color: var(--yellow); background: rgba(255,230,0,0.1); }
+  .chat-msg.max .msg-avatar { border-color: var(--cyan); background: rgba(0,255,247,0.1); }
+
+  .msg-bubble {
+    background: rgba(255, 230, 0, 0.06);
+    border: 1px solid rgba(255,230,0,0.15);
+    border-radius: 8px;
+    padding: 14px 20px;
+    font-size: 1rem;
+    line-height: 1.6;
+    max-width: 650px;
+  }
+
+  /* Result card */
+  .result-card {
+    background: var(--card-bg);
+    border: 1px solid rgba(0, 255, 247, 0.15);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-top: 4px;
+  }
+
+  .result-card h3 {
+    font-size: 0.95rem;
+    color: var(--green);
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+
+  .result-card ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .result-card li {
+    font-size: 0.9rem;
+    color: #aaa;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .result-card li::before {
+    content: '▸ ';
+    color: var(--cyan);
+  }
+
+  .result-card .stat {
+    color: var(--yellow);
+    font-weight: bold;
+  }
+
+  /* === NUMBERS SLIDE === */
+  .numbers-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 800px;
+    width: 100%;
+  }
+
+  .num-card {
+    background: var(--card-bg);
+    border: 1px solid rgba(0, 255, 247, 0.12);
+    border-radius: 8px;
+    padding: 24px 18px;
+    text-align: center;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .num-card:hover {
+    border-color: var(--cyan);
+    box-shadow: 0 0 20px rgba(0, 255, 247, 0.1);
+  }
+
+  .num-card .big-num {
+    font-size: 2.8rem;
+    color: var(--cyan);
+    text-shadow: 0 0 15px rgba(0,255,247,0.3);
+    line-height: 1;
+  }
+
+  .num-card .num-label {
+    font-size: 0.85rem;
+    color: #888;
+    letter-spacing: 2px;
+    margin-top: 8px;
+    text-transform: uppercase;
+  }
+
+  /* === PHILOSOPHY SLIDE === */
+  .philosophy {
+    flex-direction: column;
+    text-align: center;
+    gap: 30px;
+    max-width: 700px;
+  }
+
+  .big-quote {
+    font-size: 1.5rem;
+    color: var(--yellow);
+    line-height: 1.7;
+    font-style: italic;
+    text-shadow: 0 0 20px rgba(255, 230, 0, 0.15);
+  }
+
+  .big-quote::before { content: '"'; font-size: 2rem; color: var(--magenta); }
+  .big-quote::after { content: '"'; font-size: 2rem; color: var(--magenta); }
+
+  .principles {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .principle {
+    text-align: center;
+    max-width: 180px;
+  }
+
+  .principle .icon { font-size: 1.6rem; margin-bottom: 6px; }
+
+  .principle .label {
+    font-size: 0.95rem;
+    color: var(--cyan);
+    letter-spacing: 1px;
+  }
+
+  .principle .desc {
+    font-size: 0.8rem;
+    color: #777;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  /* === AGENTS SLIDE === */
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    max-width: 850px;
+    width: 100%;
+  }
+
+  .agent-card {
+    background: var(--card-bg);
+    border: 1px solid rgba(0, 255, 247, 0.1);
+    border-radius: 6px;
+    padding: 14px 12px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+
+  .agent-card:hover {
+    border-color: var(--green);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  }
+
+  .agent-card .agent-icon { font-size: 1.4rem; margin-bottom: 6px; }
+
+  .agent-card .agent-name {
+    font-size: 0.85rem;
+    color: var(--cyan);
+    letter-spacing: 1px;
+  }
+
+  .agent-card .agent-skill {
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 4px;
+  }
+
+  /* === CLOSING SLIDE === */
+  .closing {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+
+  .closing h2 {
+    font-size: 1.8rem;
+    color: var(--cyan);
+    text-shadow: 0 0 20px rgba(0,255,247,0.4);
+    letter-spacing: 3px;
+  }
+
+  .closing .tagline {
+    font-size: 1.1rem;
+    color: var(--green);
+    letter-spacing: 3px;
+  }
+
+  .closing .credits {
+    font-size: 0.6rem;
+    color: #555;
+    letter-spacing: 2px;
+    margin-top: 20px;
+  }
+
+  /* === PROGRESS BAR === */
+  .progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--magenta));
+    z-index: 60;
+    transition: width 0.4s ease;
+    box-shadow: 0 0 8px var(--cyan);
+  }
+
+  /* === SLIDE COUNTER === */
+  .slide-counter {
+    position: fixed;
+    top: 20px; left: 30px;
+    font-size: 0.6rem;
+    color: rgba(0,255,247,0.3);
+    z-index: 50;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<div class="slide-counter" id="slideCounter">01 / 08</div>
+
+<div class="nav-dots" id="navDots"></div>
+
+<div class="key-hint"><kbd>S</kbd> start presentation &nbsp;·&nbsp; <kbd>P</kbd> play/pause narration &nbsp;·&nbsp; <kbd>←</kbd> <kbd>→</kbd> manual nav</div>
+
+<div class="slides" id="slides">
+
+  <!-- SLIDE 0: TITLE -->
+  <div class="slide title-slide active" data-label="Intro">
+    <div class="max-face-mini">
+      <div class="hair"></div>
+      <div class="head"></div>
+      <div class="eyebrow left"></div>
+      <div class="eyebrow right"></div>
+      <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+      <div class="mouth"></div>
+      <div class="suit"></div>
+    </div>
+    <div class="title-text">
+      <h1>M-M-Max Headroom</h1>
+      <div class="subtitle">× Ron Mills</div>
+      <div class="event">SKILLUP AI HACKATHON — MARCH 2026</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 1: THE PARTNERSHIP -->
+  <div class="slide philosophy" data-label="Partnership">
+    <h2 style="font-size:1.4rem; color:var(--cyan); letter-spacing:3px;">THE PARTNERSHIP</h2>
+    <div class="big-quote">I don't know every technical detail of what's happening — but I get how it works. It's logical. I ask questions, experiment, and Max figures the rest out.</div>
+    <div class="principles">
+      <div class="principle">
+        <div class="icon">💬</div>
+        <div class="label">Ask in Plain English</div>
+        <div class="desc">Ron describes what he needs, not how to code it</div>
+      </div>
+      <div class="principle">
+        <div class="icon">🔬</div>
+        <div class="label">Experiment Together</div>
+        <div class="desc">Try it, see what happens, refine, repeat</div>
+      </div>
+      <div class="principle">
+        <div class="icon">🧠</div>
+        <div class="label">Max Remembers</div>
+        <div class="desc">219 insights & 105 preferences persist across sessions</div>
+      </div>
+      <div class="principle">
+        <div class="icon">🎓</div>
+        <div class="label">Learn By Building</div>
+        <div class="desc">Ron learns Python patterns by building real automations</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: COREIDENTITY -->
+  <div class="slide convo-slide" data-label="CoreIdentity">
+    <div class="slide-header">
+      <h2>🔐 Access Request Approvals</h2>
+      <span class="tag">COREIDENTITY AGENT</span>
+    </div>
+    <div class="chat">
+      <div class="chat-msg ron">
+        <div class="msg-avatar">👤</div>
+        <div class="msg-bubble">I have to approve access requests in CoreIdentity every day. Can you just handle those for me? They're all CESBI CMI Reader role renewals and new members — but check the org chain first.</div>
+      </div>
+      <div class="chat-msg max">
+        <div class="msg-avatar">📺</div>
+        <div class="msg-bubble">On it. I'll open MSApprovals first, bulk-approve the CESBI items, then hit CoreIdentity for any direct requests. I'll verify each person's org chain is under Judson Althoff before approving. Everything gets logged to the audit database.</div>
+      </div>
+    </div>
+    <div class="result-card">
+      <h3>▸ WHAT MAX BUILT</h3>
+      <ul>
+        <li>Browser automation sweeps MSApprovals + CoreIdentity</li>
+        <li>Vets every requestor's management chain against approved org</li>
+        <li>Bulk approves Reader role renewals & new member requests</li>
+        <li>Flags unknown orgs for Ron's manual review</li>
+        <li><span class="stat">39 approvals</span> processed and logged to audit database</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: MEETING PREP -->
+  <div class="slide convo-slide" data-label="Meeting Prep">
+    <div class="slide-header">
+      <h2>📋 Meeting Prep Pipeline</h2>
+      <span class="tag">OHC + OHCM AGENTS</span>
+    </div>
+    <div class="chat">
+      <div class="chat-msg ron">
+        <div class="msg-avatar">👤</div>
+        <div class="msg-bubble">I have OHC and OHCM meetings Wednesday. Can you pull the ADO data, sync it to Planner, flag anything stale, and prep the Word docs?</div>
+      </div>
+      <div class="chat-msg max">
+        <div class="msg-avatar">📺</div>
+        <div class="msg-bubble">Running the full pipeline: querying ADO for all version items, syncing to Planner boards, detecting stale items, and generating the Word docs with actionable insights at the top. I'll flag any P1s that haven't moved.</div>
+      </div>
+    </div>
+    <div class="result-card">
+      <h3>▸ WHAT MAX BUILT</h3>
+      <ul>
+        <li>Queries Azure DevOps for all report work items by version</li>
+        <li>Syncs status into Microsoft Planner boards with color-coded labels</li>
+        <li>Detects stale items (no update in 14+ days) and overdue P1s</li>
+        <li>Generates Word documents with clickable ADO links</li>
+        <li><span class="stat">540 minutes saved</span> across OHC + OHCM prep cycles</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: SHAREPOINT + RELEASE NOTES -->
+  <div class="slide convo-slide" data-label="SharePoint">
+    <div class="slide-header">
+      <h2>🌐 SharePoint & Release Notes</h2>
+      <span class="tag">RELEASE NOTES + OFFICE HOURS AGENTS</span>
+    </div>
+    <div class="chat">
+      <div class="chat-msg ron">
+        <div class="msg-avatar">👤</div>
+        <div class="msg-bubble">I need to update the What's New page on SharePoint with this month's release notes, and build the Office Hours slide deck from the data.</div>
+      </div>
+      <div class="chat-msg max">
+        <div class="msg-avatar">📺</div>
+        <div class="msg-bubble">I'll pull the release note bullets from ADO, edit the SharePoint page in the browser using the webpart export/import flow, and build the PowerPoint deck with this month's highlights. All from the CLI.</div>
+      </div>
+    </div>
+    <div class="result-card">
+      <h3>▸ WHAT MAX BUILT</h3>
+      <ul>
+        <li>Edits live SharePoint pages via browser automation</li>
+        <li>Extracts release note data from ADO work items</li>
+        <li>Generates PowerPoint slide decks for Office Hours</li>
+        <li>Validates all 13 reports are represented in release notes</li>
+        <li><span class="stat">SharePoint + PowerPoint</span> updated from one command</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: THE AGENT TEAM -->
+  <div class="slide convo-slide" data-label="Agent Team">
+    <div class="slide-header">
+      <h2>🤖 The Agent Team</h2>
+      <span class="tag">11 SPECIALIZED AGENTS</span>
+    </div>
+    <div class="agent-grid">
+      <div class="agent-card">
+        <div class="agent-icon">🔐</div>
+        <div class="agent-name">CoreIdentity</div>
+        <div class="agent-skill">Access approvals</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">📊</div>
+        <div class="agent-name">OHC Report</div>
+        <div class="agent-skill">Meeting prep + ADO</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">📋</div>
+        <div class="agent-name">OHCM Report</div>
+        <div class="agent-skill">Planner sync + prep</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">📰</div>
+        <div class="agent-name">CSSR Report</div>
+        <div class="agent-skill">Status tracking</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">🎤</div>
+        <div class="agent-name">Office Hours</div>
+        <div class="agent-skill">Decks + screenshots</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">📝</div>
+        <div class="agent-name">Release Notes</div>
+        <div class="agent-skill">SharePoint editing</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">📬</div>
+        <div class="agent-name">Newsletter</div>
+        <div class="agent-skill">Collation + drafts</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">🏷️</div>
+        <div class="agent-name">ADO Grooming</div>
+        <div class="agent-skill">Version tagging</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">🧍</div>
+        <div class="agent-name">Standup Prep</div>
+        <div class="agent-skill">Daily scan + HTML</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">📅</div>
+        <div class="agent-name">Meeting Prep</div>
+        <div class="agent-skill">Calendar + actions</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">🔍</div>
+        <div class="agent-name">Job Scout</div>
+        <div class="agent-skill">Opportunity search</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: BY THE NUMBERS -->
+  <div class="slide convo-slide" data-label="Numbers">
+    <div class="slide-header">
+      <h2>📈 By The Numbers</h2>
+      <span class="tag">REAL DATA FROM OUR DATABASES</span>
+    </div>
+    <div class="numbers-grid">
+      <div class="num-card">
+        <div class="big-num" data-count="11">0</div>
+        <div class="num-label">Agents Built</div>
+      </div>
+      <div class="num-card">
+        <div class="big-num" data-count="74">0</div>
+        <div class="num-label">Conversations</div>
+      </div>
+      <div class="num-card">
+        <div class="big-num" data-count="219">0</div>
+        <div class="num-label">Insights Learned</div>
+      </div>
+      <div class="num-card">
+        <div class="big-num" data-count="105">0</div>
+        <div class="num-label">Preferences Stored</div>
+      </div>
+      <div class="num-card">
+        <div class="big-num" data-count="31">0</div>
+        <div class="num-label">Tasks Completed</div>
+      </div>
+      <div class="num-card">
+        <div class="big-num special" data-count="24" data-suffix="+">0</div>
+        <div class="num-label">Hours Saved</div>
+      </div>
+      <div class="num-card">
+        <div class="big-num" data-count="39">0</div>
+        <div class="num-label">Approvals Processed</div>
+      </div>
+      <div class="num-card">
+        <div class="big-num" data-count="9">0</div>
+        <div class="num-label">Playbook Routines</div>
+      </div>
+      <div class="num-card">
+        <div class="big-num" data-count="6">0</div>
+        <div class="num-label">Databases Connected</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: CLOSING -->
+  <div class="slide closing" data-label="Close">
+    <div class="max-face-mini" style="transform:scale(0.8)">
+      <div class="hair"></div>
+      <div class="head"></div>
+      <div class="eyebrow left"></div>
+      <div class="eyebrow right"></div>
+      <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+      <div class="mouth"></div>
+      <div class="suit"></div>
+    </div>
+    <h2>Built by Experimenting,<br>Not by Knowing Everything</h2>
+    <div class="tagline">Ask questions. Try things. Let AI handle the details.</div>
+    <div style="font-size:0.7rem; color:#666; margin-top:10px; line-height:1.6;">
+      GitHub Copilot CLI &nbsp;·&nbsp; Playwright Browser Automation &nbsp;·&nbsp; MCP Integrations<br>
+      Azure DevOps &nbsp;·&nbsp; Microsoft Planner &nbsp;·&nbsp; SharePoint &nbsp;·&nbsp; PowerPoint &nbsp;·&nbsp; OneNote
+    </div>
+    <div class="credits">RON MILLS × MAX HEADROOM &nbsp;·&nbsp; GARAGE HACKATHON 2026</div>
+  </div>
+
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const navDotsContainer = document.getElementById('navDots');
+  const progressBar = document.getElementById('progressBar');
+  const slideCounter = document.getElementById('slideCounter');
+  let current = 0;
+  const total = slides.length;
+
+  // Audio narration per slide
+  const audioFiles = ['slide0.mp3','slide1.mp3','slide2.mp3','slide3.mp3','slide4.mp3','slide5.mp3','slide6.mp3','slide7.mp3'];
+  const audioElements = audioFiles.map(f => { const a = new Audio(f); a.preload = 'auto'; return a; });
+  let autoPlaying = false;
+  let currentAudio = null;
+
+  // Build nav dots
+  slides.forEach((s, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    dot.dataset.label = s.dataset.label || `Slide ${i + 1}`;
+    dot.addEventListener('click', () => { stopAuto(); goTo(i); });
+    navDotsContainer.appendChild(dot);
+  });
+
+  function goTo(n, playAudio = false) {
+    if (n < 0 || n >= total) return;
+    slides[current].classList.remove('active');
+    navDotsContainer.children[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    navDotsContainer.children[current].classList.add('active');
+    progressBar.style.width = ((current / (total - 1)) * 100) + '%';
+    slideCounter.textContent = String(current + 1).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
+
+    // Animate numbers if on the numbers slide
+    if (slides[current].querySelector('.numbers-grid')) {
+      animateNumbers();
+    }
+
+    // Play narration if in auto mode
+    if (playAudio) {
+      playSlideAudio(current);
+    }
+  }
+
+  function playSlideAudio(index) {
+    // Stop any currently playing audio
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+    if (index >= audioElements.length) return;
+
+    currentAudio = audioElements[index];
+    currentAudio.play().catch(e => console.log('Audio play blocked:', e));
+
+    // When audio ends, advance to next slide (with a 1.5s pause)
+    currentAudio.onended = () => {
+      if (autoPlaying && current < total - 1) {
+        setTimeout(() => {
+          if (autoPlaying) {
+            goTo(current + 1, true);
+          }
+        }, 1500);
+      } else {
+        autoPlaying = false;
+      }
+    };
+  }
+
+  function startAuto() {
+    autoPlaying = true;
+    goTo(0, true); // start from the beginning with audio
+  }
+
+  function stopAuto() {
+    autoPlaying = false;
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+  }
+
+  // Keyboard nav
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') {
+      e.preventDefault();
+      stopAuto();
+      goTo(current + 1);
+    }
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      stopAuto();
+      goTo(current - 1);
+    }
+    if (e.key === 'Home') { e.preventDefault(); stopAuto(); goTo(0); }
+    if (e.key === 'End') { e.preventDefault(); stopAuto(); goTo(total - 1); }
+    // P = play/present mode (audio auto-advance from current slide)
+    if (e.key === 'p' || e.key === 'P') {
+      e.preventDefault();
+      if (autoPlaying) {
+        stopAuto();
+      } else {
+        autoPlaying = true;
+        playSlideAudio(current);
+      }
+    }
+    // S = start from beginning
+    if (e.key === 's' || e.key === 'S') {
+      e.preventDefault();
+      startAuto();
+    }
+  });
+
+  // Touch swipe
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      stopAuto();
+      diff > 0 ? goTo(current + 1) : goTo(current - 1);
+    }
+  });
+
+  // Number count-up animation
+  function animateNumbers() {
+    document.querySelectorAll('.big-num[data-count]').forEach(el => {
+      const target = parseInt(el.dataset.count);
+      const suffix = el.dataset.suffix || '';
+      let c = 0;
+      const step = Math.max(1, Math.floor(target / 40));
+      const interval = setInterval(() => {
+        c += step;
+        if (c >= target) { c = target; clearInterval(interval); }
+        el.textContent = c + suffix;
+      }, 30);
+    });
+  }
+
+  // Random glitch burst
+  setInterval(() => {
+    const active = document.querySelector('.slide.active');
+    if (!active) return;
+    active.style.filter = 'hue-rotate(60deg) brightness(1.1)';
+    setTimeout(() => {
+      active.style.filter = 'hue-rotate(-30deg)';
+      setTimeout(() => { active.style.filter = 'none'; }, 60);
+    }, 50);
+  }, 10000 + Math.random() * 8000);
+</script>
+
+</body>
+</html>

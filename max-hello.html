@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M-M-Max Headroom</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --cyan: #00fff7;
+    --magenta: #ff00ff;
+    --yellow: #ffe600;
+    --green: #39ff14;
+    --bg: #0a0a0a;
+    --crt-curve: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Share Tech Mono', 'Consolas', monospace;
+    overflow: hidden;
+  }
+
+  /* === CRT MONITOR FRAME === */
+  .crt-frame {
+    position: relative;
+    width: 640px;
+    height: 520px;
+    background: #1a1a2e;
+    border-radius: var(--crt-curve);
+    box-shadow:
+      0 0 60px rgba(0, 255, 247, 0.15),
+      0 0 120px rgba(0, 255, 247, 0.05),
+      inset 0 0 80px rgba(0, 0, 0, 0.8);
+    border: 3px solid #333;
+  }
+
+  .crt-screen {
+    position: absolute;
+    top: 20px; left: 20px; right: 20px; bottom: 20px;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Scanlines */
+  .crt-screen::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.15) 2px,
+      rgba(0, 0, 0, 0.15) 4px
+    );
+    z-index: 10;
+    pointer-events: none;
+    animation: scanroll 8s linear infinite;
+  }
+
+  /* CRT flicker */
+  .crt-screen::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 255, 247, 0.02);
+    z-index: 11;
+    pointer-events: none;
+    animation: flicker 0.15s infinite;
+  }
+
+  @keyframes scanroll {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 200px; }
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 0.97; }
+    50% { opacity: 1; }
+  }
+
+  /* === MAX HEADROOM FACE (CSS ART) === */
+  .max-container {
+    position: relative;
+    width: 280px;
+    height: 300px;
+    animation: maxFloat 3s ease-in-out infinite;
+  }
+
+  @keyframes maxFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  /* Head shape */
+  .head {
+    position: absolute;
+    width: 180px;
+    height: 220px;
+    top: 10px;
+    left: 50px;
+    background: linear-gradient(180deg, #e8d5b7 0%, #d4b896 60%, #c4a882 100%);
+    border-radius: 90px 90px 70px 70px;
+    animation: glitchHead 4s infinite;
+    box-shadow: 0 0 30px rgba(0, 255, 247, 0.1);
+  }
+
+  @keyframes glitchHead {
+    0%, 92%, 100% { transform: translate(0, 0); filter: none; }
+    93% { transform: translate(-3px, 0); filter: hue-rotate(90deg); }
+    94% { transform: translate(3px, -1px); filter: hue-rotate(-90deg); }
+    95% { transform: translate(-1px, 2px); filter: none; }
+    96% { transform: translate(4px, 0); filter: hue-rotate(180deg); }
+    97% { transform: translate(0, 0); filter: none; }
+  }
+
+  /* Hair — slicked back 80s style */
+  .hair {
+    position: absolute;
+    width: 200px;
+    height: 100px;
+    top: -5px;
+    left: 40px;
+    background: linear-gradient(180deg, #3a2f1f 0%, #5a4830 50%, transparent 100%);
+    border-radius: 100px 100px 20px 20px;
+    z-index: 2;
+  }
+
+  .hair::before {
+    content: '';
+    position: absolute;
+    width: 160px;
+    height: 40px;
+    top: 15px;
+    left: 20px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    border-radius: 50%;
+  }
+
+  /* Eyes */
+  .eyes {
+    position: absolute;
+    top: 85px;
+    left: 50px;
+    width: 180px;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 25px;
+    z-index: 3;
+  }
+
+  .eye {
+    width: 35px;
+    height: 22px;
+    background: #fff;
+    border-radius: 50%;
+    position: relative;
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.2);
+  }
+
+  .eye::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: radial-gradient(circle, #000 40%, #1a3a5c 70%, #2d5a8c 100%);
+    border-radius: 50%;
+    top: 4px;
+    left: 12px;
+    animation: eyeLook 5s ease-in-out infinite;
+  }
+
+  @keyframes eyeLook {
+    0%, 40%, 100% { transform: translateX(0); }
+    45%, 55% { transform: translateX(4px); }
+    60%, 90% { transform: translateX(-2px); }
+  }
+
+  /* Eyebrows */
+  .eyebrow {
+    position: absolute;
+    width: 40px;
+    height: 6px;
+    background: #3a2f1f;
+    border-radius: 3px;
+    top: 72px;
+    z-index: 3;
+    animation: browRaise 4s ease-in-out infinite;
+  }
+
+  .eyebrow.left { left: 72px; transform: rotate(-5deg); }
+  .eyebrow.right { left: 168px; transform: rotate(5deg); }
+
+  @keyframes browRaise {
+    0%, 70%, 100% { transform: translateY(0) rotate(-5deg); }
+    75%, 85% { transform: translateY(-4px) rotate(-8deg); }
+  }
+
+  /* Smirk mouth */
+  .mouth {
+    position: absolute;
+    top: 160px;
+    left: 105px;
+    width: 70px;
+    height: 20px;
+    z-index: 3;
+  }
+
+  .mouth::before {
+    content: '';
+    position: absolute;
+    width: 60px;
+    height: 25px;
+    border-bottom: 4px solid #8b4040;
+    border-radius: 0 0 30px 30px;
+    animation: smirk 3s ease-in-out infinite;
+  }
+
+  @keyframes smirk {
+    0%, 60%, 100% { width: 60px; transform: rotate(0deg); }
+    65%, 80% { width: 50px; transform: rotate(5deg) translateX(5px); }
+  }
+
+  /* Suit collar / shoulders */
+  .suit {
+    position: absolute;
+    bottom: 0;
+    left: 30px;
+    width: 220px;
+    height: 80px;
+    background: linear-gradient(180deg, #1a1a3a 0%, #0f0f2a 100%);
+    border-radius: 110px 110px 0 0;
+    z-index: 1;
+  }
+
+  .suit::before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-top: 30px solid #fff;
+    opacity: 0.9;
+  }
+
+  /* Tie */
+  .suit::after {
+    content: '';
+    position: absolute;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 35px;
+    background: linear-gradient(180deg, #cc2244, #991133);
+    clip-path: polygon(30% 0%, 70% 0%, 100% 100%, 50% 85%, 0% 100%);
+  }
+
+  /* === GLITCH OVERLAY === */
+  .glitch-bar {
+    position: absolute;
+    left: 0; right: 0;
+    height: 3px;
+    background: var(--cyan);
+    opacity: 0;
+    z-index: 8;
+    animation: glitchBar 6s infinite;
+  }
+
+  .glitch-bar:nth-child(1) { animation-delay: 0s; }
+  .glitch-bar:nth-child(2) { animation-delay: 2s; }
+  .glitch-bar:nth-child(3) { animation-delay: 4s; }
+
+  @keyframes glitchBar {
+    0%, 90%, 100% { opacity: 0; top: 0; }
+    91% { opacity: 0.8; top: 20%; height: 2px; }
+    93% { opacity: 0.6; top: 55%; height: 4px; }
+    95% { opacity: 0.9; top: 80%; height: 1px; }
+    97% { opacity: 0; }
+  }
+
+  /* === GREETING TEXT === */
+  .greeting {
+    position: relative;
+    z-index: 5;
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  .greeting h1 {
+    font-size: 1.8rem;
+    color: var(--cyan);
+    text-shadow:
+      0 0 10px rgba(0, 255, 247, 0.8),
+      0 0 40px rgba(0, 255, 247, 0.3),
+      3px 0 var(--magenta),
+      -3px 0 var(--green);
+    animation: textGlitch 3s infinite, typeIn 1.5s steps(28) forwards;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    border-right: 3px solid var(--cyan);
+    width: 0;
+    animation: typeIn 1.5s steps(28) 0.5s forwards, blink 0.8s step-end infinite, textGlitch 5s 2s infinite;
+  }
+
+  @keyframes typeIn {
+    0% { width: 0; }
+    100% { width: 100%; }
+  }
+
+  @keyframes blink {
+    50% { border-color: transparent; }
+  }
+
+  @keyframes textGlitch {
+    0%, 87%, 100% { text-shadow: 0 0 10px rgba(0,255,247,0.8), 0 0 40px rgba(0,255,247,0.3); }
+    88% { text-shadow: 3px 0 var(--magenta), -3px 0 var(--green), 0 0 10px rgba(0,255,247,0.8); }
+    89% { text-shadow: -2px 0 var(--yellow), 2px 0 var(--cyan), 0 0 10px rgba(0,255,247,0.8); }
+    90% { text-shadow: 0 0 10px rgba(0,255,247,0.8), 0 0 40px rgba(0,255,247,0.3); }
+  }
+
+  .greeting .subtitle {
+    font-size: 0.9rem;
+    color: var(--green);
+    opacity: 0;
+    animation: fadeIn 0.8s ease-out 2.2s forwards;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  @keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 0.8; transform: translateY(0); }
+  }
+
+  /* === POWER ON EFFECT === */
+  .power-on {
+    animation: powerOn 0.8s ease-out forwards;
+  }
+
+  @keyframes powerOn {
+    0% {
+      filter: brightness(10) saturate(0);
+      transform: scaleY(0.005) scaleX(0.8);
+    }
+    20% {
+      filter: brightness(3) saturate(0.5);
+      transform: scaleY(0.01) scaleX(1);
+    }
+    40% {
+      filter: brightness(1.5) saturate(0.8);
+      transform: scaleY(1) scaleX(1);
+    }
+    100% {
+      filter: brightness(1) saturate(1);
+      transform: scaleY(1) scaleX(1);
+    }
+  }
+
+  /* === CORNER DECORATIONS === */
+  .corner-text {
+    position: absolute;
+    font-size: 0.6rem;
+    color: rgba(0, 255, 247, 0.4);
+    z-index: 5;
+    letter-spacing: 1px;
+  }
+
+  .corner-text.top-left { top: 30px; left: 30px; }
+  .corner-text.top-right { top: 30px; right: 30px; }
+  .corner-text.bottom-left { bottom: 30px; left: 30px; }
+  .corner-text.bottom-right { bottom: 30px; right: 30px; }
+
+  /* === AMBIENT PARTICLES === */
+  .particle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: var(--cyan);
+    border-radius: 50%;
+    opacity: 0;
+    z-index: 1;
+  }
+
+  .particle:nth-child(1) { left: 15%; animation: particleFade 4s 0s infinite; }
+  .particle:nth-child(2) { left: 35%; animation: particleFade 4s 0.8s infinite; }
+  .particle:nth-child(3) { left: 55%; animation: particleFade 4s 1.6s infinite; }
+  .particle:nth-child(4) { left: 75%; animation: particleFade 4s 2.4s infinite; }
+  .particle:nth-child(5) { left: 90%; animation: particleFade 4s 3.2s infinite; }
+
+  @keyframes particleFade {
+    0%, 100% { opacity: 0; top: 90%; }
+    30% { opacity: 0.6; }
+    100% { opacity: 0; top: 10%; }
+  }
+
+  /* === STATUS BAR === */
+  .status-bar {
+    position: absolute;
+    bottom: 5px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.5rem;
+    color: rgba(0, 255, 247, 0.3);
+    z-index: 12;
+    padding: 4px 8px;
+  }
+
+  .status-bar .signal {
+    animation: signalPulse 2s infinite;
+  }
+
+  @keyframes signalPulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.7; }
+  }
+</style>
+</head>
+<body>
+  <div class="crt-frame power-on">
+    <div class="crt-screen">
+      <!-- Glitch bars -->
+      <div class="glitch-bar"></div>
+      <div class="glitch-bar"></div>
+      <div class="glitch-bar"></div>
+
+      <!-- Ambient particles -->
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+
+      <!-- Corner info -->
+      <span class="corner-text top-left">CH 01</span>
+      <span class="corner-text top-right">SIGNAL OK</span>
+      <span class="corner-text bottom-left">NETWORK: 20 MIN INTO THE FUTURE</span>
+
+      <!-- Max Headroom CSS Art -->
+      <div class="max-container">
+        <div class="hair"></div>
+        <div class="head"></div>
+        <div class="eyebrow left"></div>
+        <div class="eyebrow right"></div>
+        <div class="eyes">
+          <div class="eye"></div>
+          <div class="eye"></div>
+        </div>
+        <div class="mouth"></div>
+        <div class="suit"></div>
+      </div>
+
+      <!-- Greeting -->
+      <div class="greeting">
+        <h1>M-M-Max Headroom!</h1>
+        <div class="subtitle">📺 Your AI Assistant Is Online</div>
+      </div>
+
+      <!-- Status bar -->
+      <div class="status-bar">
+        <span>COPILOT CLI v1.0</span>
+        <span class="signal">▮▮▮▮▯</span>
+        <span id="timestamp"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Live timestamp
+    function updateTime() {
+      const now = new Date();
+      const ts = now.toLocaleTimeString('en-US', { hour12: false });
+      document.getElementById('timestamp').textContent = ts;
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+
+    // Random glitch burst every 8-15 seconds
+    setInterval(() => {
+      const screen = document.querySelector('.crt-screen');
+      screen.style.filter = 'hue-rotate(90deg) brightness(1.3)';
+      setTimeout(() => {
+        screen.style.filter = 'hue-rotate(-45deg) brightness(0.8)';
+        setTimeout(() => {
+          screen.style.filter = 'none';
+        }, 80);
+      }, 60);
+    }, 8000 + Math.random() * 7000);
+  </script>
+</body>
+</html>
