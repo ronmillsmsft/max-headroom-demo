@@ -4,7 +4,7 @@ An interactive, narrated demo showcasing how a Program Manager and an AI assista
 
 ## 🎬 Watch the Demo
 
-**[▶ Open the Presentation](https://ronmills_microsoft.github.io/max-headroom-demo/)**
+**[▶ Open the Presentation](https://ronmillsmsft.github.io/max-headroom-demo/)**
 
 ## Controls
 
