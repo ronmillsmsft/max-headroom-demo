@@ -580,6 +580,109 @@
     z-index: 50;
     letter-spacing: 2px;
   }
+
+  /* === TAP-TO-START OVERLAY === */
+  .tap-overlay {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 55;
+    text-align: center;
+    cursor: pointer;
+    animation: tapPulse 2s ease-in-out infinite;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tap-overlay .tap-icon {
+    font-size: 2.2rem;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .tap-overlay .tap-text {
+    font-size: 0.7rem;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+
+  @keyframes tapPulse {
+    0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.05); }
+  }
+
+  .tap-overlay.hidden { display: none; }
+
+  /* === SPEED CONTROL === */
+  .speed-control {
+    position: fixed;
+    bottom: 20px;
+    right: 30px;
+    z-index: 55;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+
+  .speed-control.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .speed-label {
+    font-size: 0.55rem;
+    color: rgba(0,255,247,0.35);
+    letter-spacing: 2px;
+    margin-right: 4px;
+  }
+
+  .speed-btn {
+    background: transparent;
+    border: 1px solid rgba(0,255,247,0.2);
+    color: rgba(0,255,247,0.5);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    padding: 3px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .speed-btn:hover, .speed-btn.active {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(0,255,247,0.08);
+    box-shadow: 0 0 8px rgba(0,255,247,0.15);
+  }
+
+  /* === PLAY/PAUSE INDICATOR === */
+  .play-state {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-size: 3rem;
+    color: var(--cyan);
+    z-index: 70;
+    pointer-events: none;
+    opacity: 0;
+    transition: none;
+  }
+
+  .play-state.flash {
+    animation: playFlash 0.6s ease-out forwards;
+  }
+
+  @keyframes playFlash {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.9; }
+    100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+  }
 </style>
 </head>
 <body>
@@ -589,7 +692,21 @@
 
 <div class="nav-dots" id="navDots"></div>
 
-<div class="key-hint"><kbd>S</kbd> start presentation &nbsp;·&nbsp; <kbd>P</kbd> play/pause narration &nbsp;·&nbsp; <kbd>←</kbd> <kbd>→</kbd> manual nav</div>
+<div class="key-hint">tap/click · swipe/scroll · <kbd>←</kbd> <kbd>→</kbd> nav &nbsp;·&nbsp; <kbd>S</kbd> start &nbsp;·&nbsp; <kbd>P</kbd> play/pause</div>
+
+<div class="tap-overlay" id="tapOverlay">
+  <span class="tap-icon">👆</span>
+  <span class="tap-text">Tap to Start</span>
+</div>
+
+<div class="speed-control" id="speedControl">
+  <span class="speed-label">SPEED</span>
+  <button class="speed-btn active" data-speed="1">1×</button>
+  <button class="speed-btn" data-speed="1.5">1.5×</button>
+  <button class="speed-btn" data-speed="2">2×</button>
+</div>
+
+<div class="play-state" id="playState"></div>
 
 <div class="slides" id="slides">
 
@@ -861,6 +978,9 @@
   const navDotsContainer = document.getElementById('navDots');
   const progressBar = document.getElementById('progressBar');
   const slideCounter = document.getElementById('slideCounter');
+  const tapOverlay = document.getElementById('tapOverlay');
+  const speedControl = document.getElementById('speedControl');
+  const playStateEl = document.getElementById('playState');
   let current = 0;
   const total = slides.length;
 
@@ -869,15 +989,38 @@
   const audioElements = audioFiles.map(f => { const a = new Audio(f); a.preload = 'auto'; return a; });
   let autoPlaying = false;
   let currentAudio = null;
+  let playbackSpeed = 1;
+  let hasStarted = false;
 
   // Build nav dots
   slides.forEach((s, i) => {
     const dot = document.createElement('div');
     dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
     dot.dataset.label = s.dataset.label || `Slide ${i + 1}`;
-    dot.addEventListener('click', () => { stopAuto(); goTo(i); });
+    dot.addEventListener('click', (e) => { e.stopPropagation(); stopAuto(); goTo(i); });
     navDotsContainer.appendChild(dot);
   });
+
+  // Speed control buttons
+  document.querySelectorAll('.speed-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      playbackSpeed = parseFloat(btn.dataset.speed);
+      document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // Apply to currently playing audio
+      if (currentAudio) {
+        currentAudio.playbackRate = playbackSpeed;
+      }
+    });
+  });
+
+  function flashPlayState(icon) {
+    playStateEl.textContent = icon;
+    playStateEl.classList.remove('flash');
+    void playStateEl.offsetWidth; // force reflow
+    playStateEl.classList.add('flash');
+  }
 
   function goTo(n, playAudio = false) {
     if (n < 0 || n >= total) return;
@@ -901,7 +1044,6 @@
   }
 
   function playSlideAudio(index) {
-    // Stop any currently playing audio
     if (currentAudio) {
       currentAudio.pause();
       currentAudio.currentTime = 0;
@@ -909,25 +1051,34 @@
     if (index >= audioElements.length) return;
 
     currentAudio = audioElements[index];
+    currentAudio.playbackRate = playbackSpeed;
     currentAudio.play().catch(e => console.log('Audio play blocked:', e));
 
-    // When audio ends, advance to next slide (with a 1.5s pause)
+    // Show speed control while playing
+    speedControl.classList.add('visible');
+
+    // When audio ends, advance to next slide
     currentAudio.onended = () => {
       if (autoPlaying && current < total - 1) {
+        const delay = Math.max(300, 1500 / playbackSpeed);
         setTimeout(() => {
           if (autoPlaying) {
             goTo(current + 1, true);
           }
-        }, 1500);
+        }, delay);
       } else {
         autoPlaying = false;
+        speedControl.classList.remove('visible');
       }
     };
   }
 
   function startAuto() {
+    hasStarted = true;
     autoPlaying = true;
-    goTo(0, true); // start from the beginning with audio
+    tapOverlay.classList.add('hidden');
+    flashPlayState('▶');
+    goTo(0, true);
   }
 
   function stopAuto() {
@@ -936,9 +1087,71 @@
       currentAudio.pause();
       currentAudio.currentTime = 0;
     }
+    speedControl.classList.remove('visible');
   }
 
-  // Keyboard nav
+  function togglePlayPause() {
+    if (!hasStarted) {
+      startAuto();
+      return;
+    }
+    if (autoPlaying) {
+      // Pause
+      autoPlaying = false;
+      if (currentAudio) {
+        currentAudio.pause();
+      }
+      flashPlayState('⏸');
+    } else {
+      // Resume from current slide
+      autoPlaying = true;
+      flashPlayState('▶');
+      if (currentAudio && currentAudio.currentTime > 0 && currentAudio.paused) {
+        currentAudio.playbackRate = playbackSpeed;
+        currentAudio.play().catch(e => console.log('Audio play blocked:', e));
+        speedControl.classList.add('visible');
+      } else {
+        playSlideAudio(current);
+      }
+    }
+  }
+
+  // === TAP / CLICK HANDLER ===
+  document.addEventListener('click', (e) => {
+    // Ignore clicks on nav dots, speed buttons, and links
+    if (e.target.closest('.nav-dots') || e.target.closest('.speed-control') || e.target.closest('a')) return;
+
+    if (!hasStarted) {
+      startAuto();
+    } else {
+      togglePlayPause();
+    }
+  });
+
+  // Tap overlay also starts
+  tapOverlay.addEventListener('click', (e) => {
+    e.stopPropagation();
+    startAuto();
+  });
+
+  // === MOUSE WHEEL NAVIGATION ===
+  let wheelCooldown = false;
+  document.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    if (wheelCooldown) return;
+    wheelCooldown = true;
+    setTimeout(() => { wheelCooldown = false; }, 400);
+
+    if (e.deltaY > 0 || e.deltaX > 0) {
+      stopAuto();
+      goTo(current + 1);
+    } else if (e.deltaY < 0 || e.deltaX < 0) {
+      stopAuto();
+      goTo(current - 1);
+    }
+  }, { passive: false });
+
+  // === KEYBOARD NAV ===
   document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === ' ') {
       e.preventDefault();
@@ -952,31 +1165,60 @@
     }
     if (e.key === 'Home') { e.preventDefault(); stopAuto(); goTo(0); }
     if (e.key === 'End') { e.preventDefault(); stopAuto(); goTo(total - 1); }
-    // P = play/present mode (audio auto-advance from current slide)
     if (e.key === 'p' || e.key === 'P') {
       e.preventDefault();
-      if (autoPlaying) {
-        stopAuto();
-      } else {
-        autoPlaying = true;
-        playSlideAudio(current);
-      }
+      togglePlayPause();
     }
-    // S = start from beginning
     if (e.key === 's' || e.key === 'S') {
       e.preventDefault();
       startAuto();
     }
   });
 
-  // Touch swipe
+  // === TOUCH SWIPE (improved with velocity detection) ===
   let touchStartX = 0;
-  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  let isSwiping = false;
+
+  document.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+    isSwiping = false;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    const dx = Math.abs(e.touches[0].clientX - touchStartX);
+    const dy = Math.abs(e.touches[0].clientY - touchStartY);
+    if (dx > 10 || dy > 10) {
+      isSwiping = true;
+    }
+  }, { passive: true });
+
   document.addEventListener('touchend', (e) => {
-    const diff = touchStartX - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 50) {
+    const dx = touchStartX - e.changedTouches[0].clientX;
+    const dy = touchStartY - e.changedTouches[0].clientY;
+    const dt = Date.now() - touchStartTime;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    // Horizontal swipe: must be mostly horizontal and exceed threshold
+    if (absDx > 40 && absDx > absDy * 1.3) {
       stopAuto();
-      diff > 0 ? goTo(current + 1) : goTo(current - 1);
+      dx > 0 ? goTo(current + 1) : goTo(current - 1);
+      return;
+    }
+
+    // If it was a tap (not a swipe), toggle play/pause
+    if (!isSwiping && absDx < 15 && absDy < 15 && dt < 300) {
+      // Ignore taps on interactive elements
+      if (e.target.closest('.nav-dots') || e.target.closest('.speed-control') || e.target.closest('a')) return;
+      if (!hasStarted) {
+        startAuto();
+      } else {
+        togglePlayPause();
+      }
     }
   });
 
