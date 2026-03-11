@@ -991,13 +991,19 @@
   let currentAudio = null;
   let playbackSpeed = 1;
   let hasStarted = false;
+  let advanceTimer = null; // track the inter-slide timeout
 
-  // Build nav dots
+  // Build nav dots — jump to slide but keep autoplay running
   slides.forEach((s, i) => {
     const dot = document.createElement('div');
     dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
     dot.dataset.label = s.dataset.label || `Slide ${i + 1}`;
-    dot.addEventListener('click', (e) => { e.stopPropagation(); stopAuto(); goTo(i); });
+    dot.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearAdvanceTimer();
+      if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
+      goTo(i, autoPlaying); // keep playing if was playing
+    });
     navDotsContainer.appendChild(dot);
   });
 
@@ -1008,17 +1014,20 @@
       playbackSpeed = parseFloat(btn.dataset.speed);
       document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      // Apply to currently playing audio
       if (currentAudio) {
         currentAudio.playbackRate = playbackSpeed;
       }
     });
   });
 
+  function clearAdvanceTimer() {
+    if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
+  }
+
   function flashPlayState(icon) {
     playStateEl.textContent = icon;
     playStateEl.classList.remove('flash');
-    void playStateEl.offsetWidth; // force reflow
+    void playStateEl.offsetWidth;
     playStateEl.classList.add('flash');
   }
 
@@ -1032,41 +1041,36 @@
     progressBar.style.width = ((current / (total - 1)) * 100) + '%';
     slideCounter.textContent = String(current + 1).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
 
-    // Animate numbers if on the numbers slide
     if (slides[current].querySelector('.numbers-grid')) {
       animateNumbers();
     }
 
-    // Play narration if in auto mode
     if (playAudio) {
       playSlideAudio(current);
     }
   }
 
   function playSlideAudio(index) {
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
-    }
+    clearAdvanceTimer();
+    if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
     if (index >= audioElements.length) return;
 
     currentAudio = audioElements[index];
     currentAudio.playbackRate = playbackSpeed;
     currentAudio.play().catch(e => console.log('Audio play blocked:', e));
-
-    // Show speed control while playing
     speedControl.classList.add('visible');
 
-    // When audio ends, advance to next slide
     currentAudio.onended = () => {
       if (autoPlaying && current < total - 1) {
-        const delay = Math.max(300, 1500 / playbackSpeed);
-        setTimeout(() => {
+        const delay = Math.max(200, 800 / playbackSpeed);
+        advanceTimer = setTimeout(() => {
+          advanceTimer = null;
           if (autoPlaying) {
             goTo(current + 1, true);
           }
         }, delay);
-      } else {
+      } else if (current >= total - 1) {
+        // Reached the end — presentation complete
         autoPlaying = false;
         speedControl.classList.remove('visible');
       }
@@ -1077,64 +1081,48 @@
     hasStarted = true;
     autoPlaying = true;
     tapOverlay.classList.add('hidden');
+    speedControl.classList.add('visible');
     flashPlayState('▶');
     goTo(0, true);
   }
 
-  function stopAuto() {
+  function pausePresentation() {
     autoPlaying = false;
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
+    clearAdvanceTimer();
+    if (currentAudio) { currentAudio.pause(); }
+    flashPlayState('⏸');
+  }
+
+  function resumePresentation() {
+    autoPlaying = true;
+    speedControl.classList.add('visible');
+    flashPlayState('▶');
+    // Resume audio if it was mid-clip, otherwise start the current slide's audio
+    if (currentAudio && currentAudio.currentTime > 0 && currentAudio.paused) {
+      currentAudio.playbackRate = playbackSpeed;
+      currentAudio.play().catch(e => console.log('Audio play blocked:', e));
+    } else {
+      playSlideAudio(current);
     }
-    speedControl.classList.remove('visible');
   }
 
   function togglePlayPause() {
-    if (!hasStarted) {
-      startAuto();
-      return;
-    }
-    if (autoPlaying) {
-      // Pause
-      autoPlaying = false;
-      if (currentAudio) {
-        currentAudio.pause();
-      }
-      flashPlayState('⏸');
-    } else {
-      // Resume from current slide
-      autoPlaying = true;
-      flashPlayState('▶');
-      if (currentAudio && currentAudio.currentTime > 0 && currentAudio.paused) {
-        currentAudio.playbackRate = playbackSpeed;
-        currentAudio.play().catch(e => console.log('Audio play blocked:', e));
-        speedControl.classList.add('visible');
-      } else {
-        playSlideAudio(current);
-      }
-    }
+    if (!hasStarted) { startAuto(); return; }
+    autoPlaying ? pausePresentation() : resumePresentation();
   }
 
-  // === TAP / CLICK HANDLER ===
+  // === TAP / CLICK — only pause/unpause, never stops auto-advance ===
   document.addEventListener('click', (e) => {
-    // Ignore clicks on nav dots, speed buttons, and links
     if (e.target.closest('.nav-dots') || e.target.closest('.speed-control') || e.target.closest('a')) return;
-
-    if (!hasStarted) {
-      startAuto();
-    } else {
-      togglePlayPause();
-    }
+    togglePlayPause();
   });
 
-  // Tap overlay also starts
   tapOverlay.addEventListener('click', (e) => {
     e.stopPropagation();
     startAuto();
   });
 
-  // === MOUSE WHEEL NAVIGATION ===
+  // === MOUSE WHEEL — manual nav, pauses autoplay ===
   let wheelCooldown = false;
   document.addEventListener('wheel', (e) => {
     e.preventDefault();
@@ -1142,11 +1130,11 @@
     wheelCooldown = true;
     setTimeout(() => { wheelCooldown = false; }, 400);
 
+    pausePresentation();
+    if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
     if (e.deltaY > 0 || e.deltaX > 0) {
-      stopAuto();
       goTo(current + 1);
     } else if (e.deltaY < 0 || e.deltaX < 0) {
-      stopAuto();
       goTo(current - 1);
     }
   }, { passive: false });
@@ -1155,16 +1143,18 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === ' ') {
       e.preventDefault();
-      stopAuto();
+      pausePresentation();
+      if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
       goTo(current + 1);
     }
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      stopAuto();
+      pausePresentation();
+      if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
       goTo(current - 1);
     }
-    if (e.key === 'Home') { e.preventDefault(); stopAuto(); goTo(0); }
-    if (e.key === 'End') { e.preventDefault(); stopAuto(); goTo(total - 1); }
+    if (e.key === 'Home') { e.preventDefault(); pausePresentation(); goTo(0); }
+    if (e.key === 'End') { e.preventDefault(); pausePresentation(); goTo(total - 1); }
     if (e.key === 'p' || e.key === 'P') {
       e.preventDefault();
       togglePlayPause();
@@ -1175,7 +1165,7 @@
     }
   });
 
-  // === TOUCH SWIPE (improved with velocity detection) ===
+  // === TOUCH — swipe to manually nav (pauses), tap to toggle play/pause ===
   let touchStartX = 0;
   let touchStartY = 0;
   let touchStartTime = 0;
@@ -1191,9 +1181,7 @@
   document.addEventListener('touchmove', (e) => {
     const dx = Math.abs(e.touches[0].clientX - touchStartX);
     const dy = Math.abs(e.touches[0].clientY - touchStartY);
-    if (dx > 10 || dy > 10) {
-      isSwiping = true;
-    }
+    if (dx > 10 || dy > 10) { isSwiping = true; }
   }, { passive: true });
 
   document.addEventListener('touchend', (e) => {
@@ -1203,22 +1191,18 @@
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
-    // Horizontal swipe: must be mostly horizontal and exceed threshold
+    // Horizontal swipe — manual nav, pauses autoplay
     if (absDx > 40 && absDx > absDy * 1.3) {
-      stopAuto();
+      pausePresentation();
+      if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
       dx > 0 ? goTo(current + 1) : goTo(current - 1);
       return;
     }
 
-    // If it was a tap (not a swipe), toggle play/pause
+    // Tap — toggle play/pause (don't fire on interactive elements)
     if (!isSwiping && absDx < 15 && absDy < 15 && dt < 300) {
-      // Ignore taps on interactive elements
       if (e.target.closest('.nav-dots') || e.target.closest('.speed-control') || e.target.closest('a')) return;
-      if (!hasStarted) {
-        startAuto();
-      } else {
-        togglePlayPause();
-      }
+      togglePlayPause();
     }
   });
 
